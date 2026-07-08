@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import streamlit as st
 from keboola_streamlit import KeboolaStreamlit
@@ -96,9 +98,27 @@ def render_card(label, value, note=""):
     )
 
 
+def get_config_value(*names, default=None):
+    for name in names:
+        value = st.secrets.get(name) or os.environ.get(name)
+        if value:
+            return value
+    return default
+
+
+kbc_url = get_config_value("KBC_URL", default="https://connection.europe-west3.gcp.keboola.com")
+kbc_token = get_config_value("EDITOR_TOKEN", "KBC_TOKEN", "KBC_STORAGE_TOKEN", "STORAGE_TOKEN")
+
+if not kbc_token:
+    st.error(
+        "Missing Keboola Storage API token. Add a secret or environment variable named "
+        "EDITOR_TOKEN in the Keboola app configuration."
+    )
+    st.stop()
+
 keboola = KeboolaStreamlit(
-    root_url=st.secrets.get("KBC_URL", "https://connection.europe-west3.gcp.keboola.com"),
-    token=st.secrets["EDITOR_TOKEN"],
+    root_url=kbc_url,
+    token=kbc_token,
 )
 
 
