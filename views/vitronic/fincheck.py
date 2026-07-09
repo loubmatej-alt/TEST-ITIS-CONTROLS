@@ -8,6 +8,7 @@ from keboola_streamlit import KeboolaStreamlit
 
 TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_2026"
 OK_TOLERANCE = 1
+POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e63b7f7fbe8a/reports/e51d703b-a94a-4167-a664-0fde0315f0c8/a1be24ae0c7faff0bccb?experience=power-bi"
 
 
 if st.button("Back to Vitronic Hub"):
@@ -288,15 +289,20 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-filter_col, refresh_col = st.columns([3, 1])
+filter_col, pbi_col, refresh_col = st.columns([2.2, 1.25, 1])
 with filter_col:
     selected_period = st.selectbox("Period", period_options, index=period_options.index(default_period))
+with pbi_col:
+    st.write("")
+    st.write("")
+    st.link_button("Open Power BI detail", POWER_BI_DETAIL_URL, use_container_width=True)
 with refresh_col:
     st.write("")
     st.write("")
     if st.button("Refresh data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+    st.caption("Reloads the Keboola table cache.")
 
 period_df = controls_df[controls_df[period_column] == selected_period]
 if period_df.empty:
