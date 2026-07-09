@@ -16,121 +16,40 @@ if st.button("Back to Vitronic Hub"):
 st.markdown(
     """
     <style>
-        .block-container {
-            padding-top: 1.8rem;
-            max-width: 1180px;
-        }
+        .block-container { padding-top: 1.8rem; max-width: 1180px; }
         .fc-hero {
-            border: 1px solid #D7E1EC;
-            border-radius: 8px;
-            padding: 1.15rem 1.25rem;
-            background: #F8FAFC;
-            margin-bottom: 1rem;
+            border: 1px solid #D7E1EC; border-radius: 8px; padding: 1.15rem 1.25rem;
+            background: #F8FAFC; margin-bottom: 1rem;
         }
-        .fc-title {
-            color: #132033;
-            font-size: 1.9rem;
-            font-weight: 760;
-            line-height: 1.15;
-            margin: 0;
-        }
-        .fc-subtitle {
-            color: #5D6B7B;
-            font-size: 0.94rem;
-            margin-top: 0.35rem;
-        }
-        .fc-pill-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 0.85rem;
-        }
+        .fc-title { color: #132033; font-size: 1.9rem; font-weight: 760; line-height: 1.15; margin: 0; }
+        .fc-subtitle { color: #5D6B7B; font-size: 0.94rem; margin-top: 0.35rem; }
+        .fc-pill-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
         .fc-pill {
-            border: 1px solid #D7E1EC;
-            background: #FFFFFF;
-            color: #31465C;
-            border-radius: 999px;
-            padding: 0.28rem 0.72rem;
-            font-size: 0.8rem;
-            font-weight: 650;
+            border: 1px solid #D7E1EC; background: #FFFFFF; color: #31465C; border-radius: 999px;
+            padding: 0.28rem 0.72rem; font-size: 0.8rem; font-weight: 650;
         }
-        .fc-status-band {
-            border-radius: 8px;
-            padding: 0.95rem 1rem;
-            margin: 0.6rem 0 1rem 0;
-            border: 1px solid;
-        }
-        .fc-ok {
-            background: #ECFDF3;
-            border-color: #B7E4C7;
-            color: #126C3A;
-        }
-        .fc-bad {
-            background: #FEF2F2;
-            border-color: #F4C7C7;
-            color: #9F1D1D;
-        }
-        .fc-status-title {
-            font-size: 1.05rem;
-            font-weight: 760;
-            margin-bottom: 0.2rem;
-        }
-        .fc-status-note {
-            font-size: 0.88rem;
-            opacity: 0.88;
-        }
+        .fc-status-band { border-radius: 8px; padding: 0.95rem 1rem; margin: 0.6rem 0 1rem 0; border: 1px solid; }
+        .fc-ok { background: #ECFDF3; border-color: #B7E4C7; color: #126C3A; }
+        .fc-bad { background: #FEF2F2; border-color: #F4C7C7; color: #9F1D1D; }
+        .fc-status-title { font-size: 1.05rem; font-weight: 760; margin-bottom: 0.2rem; }
+        .fc-status-note { font-size: 0.88rem; opacity: 0.88; }
         .metric-card {
-            border: 1px solid #DDE6F1;
-            border-radius: 8px;
-            background: #FFFFFF;
-            padding: 1rem;
-            min-height: 124px;
-            box-shadow: 0 1px 6px rgba(15, 23, 42, 0.06);
+            border: 1px solid #DDE6F1; border-radius: 8px; background: #FFFFFF; padding: 1rem;
+            min-height: 124px; box-shadow: 0 1px 6px rgba(15, 23, 42, 0.06);
         }
-        .metric-card.ok {
-            border-left: 5px solid #22A06B;
-        }
-        .metric-card.bad {
-            border-left: 5px solid #E55353;
-        }
-        .metric-title {
-            color: #132033;
-            font-size: 1.05rem;
-            font-weight: 760;
-            margin-bottom: 0.65rem;
-        }
+        .metric-card.ok { border-left: 5px solid #22A06B; }
+        .metric-card.bad { border-left: 5px solid #E55353; }
+        .metric-title { color: #132033; font-size: 1.05rem; font-weight: 760; margin-bottom: 0.65rem; }
         .metric-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 0.75rem;
-            padding: 0.32rem 0;
+            display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.32rem 0;
             border-top: 1px solid #EEF2F7;
         }
-        .metric-row:first-of-type {
-            border-top: 0;
-        }
-        .metric-label {
-            color: #64748B;
-            font-size: 0.82rem;
-        }
-        .metric-value {
-            color: #132033;
-            font-size: 0.92rem;
-            font-weight: 700;
-            text-align: right;
-        }
-        .metric-diff.ok {
-            color: #178A4C;
-        }
-        .metric-diff.bad {
-            color: #C73737;
-        }
-        .section-title {
-            color: #132033;
-            font-size: 1.02rem;
-            font-weight: 760;
-            margin: 0.75rem 0 0.4rem 0;
-        }
+        .metric-row:first-of-type { border-top: 0; }
+        .metric-label { color: #64748B; font-size: 0.82rem; }
+        .metric-value { color: #132033; font-size: 0.92rem; font-weight: 700; text-align: right; }
+        .metric-diff.ok { color: #178A4C; }
+        .metric-diff.bad { color: #C73737; }
+        .section-title { color: #132033; font-size: 1.02rem; font-weight: 760; margin: 0.75rem 0 0.4rem 0; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -160,7 +79,8 @@ def parse_number(value):
         return 0.0
     if isinstance(value, str):
         value = value.replace(" ", "").replace(",", ".")
-    return pd.to_numeric(value, errors="coerce")
+    parsed = pd.to_numeric(value, errors="coerce")
+    return 0.0 if pd.isna(parsed) else float(parsed)
 
 
 def format_number(value):
@@ -169,18 +89,33 @@ def format_number(value):
     return f"{value:,.0f}".replace(",", " ")
 
 
-def is_ok(value):
+def status_is_ok(value):
+    return normalize_text(value) == "OK"
+
+
+def diff_is_ok(value):
     if pd.isna(value):
         return False
     return abs(float(value)) <= OK_TOLERANCE
 
 
+def period_sort_key(value):
+    text = str(value).strip()
+    match = re.match(r"^(\d{4})[-_ ]?(\d{2})$", text)
+    if not match:
+        return (9999, 99, text)
+    return (int(match.group(1)), int(match.group(2)), text)
+
+
+def is_2026_period(value):
+    year, month, _ = period_sort_key(value)
+    return year == 2026 and 1 <= month <= 12
+
+
 def find_column(columns, include_terms, exclude_terms=None):
     exclude_terms = exclude_terms or []
     for original, normalized in columns.items():
-        if all(term in normalized for term in include_terms) and not any(
-            term in normalized for term in exclude_terms
-        ):
+        if all(term in normalized for term in include_terms) and not any(term in normalized for term in exclude_terms):
             return original
     return None
 
@@ -213,37 +148,24 @@ def render_status(ok_count, total_count, selected_period):
     )
 
 
-def render_metric_card(title, idl_value, excel_value, diff_value):
-    ok = is_ok(diff_value)
+def render_metric_card(title, idl_value, excel_value, diff_value, ok):
     state_class = "ok" if ok else "bad"
     status_text = "OK" if ok else "NOT OK"
     st.markdown(
         f"""
         <div class="metric-card {state_class}">
             <div class="metric-title">{title}</div>
-            <div class="metric-row">
-                <div class="metric-label">IDL</div>
-                <div class="metric-value">{format_number(idl_value)}</div>
-            </div>
-            <div class="metric-row">
-                <div class="metric-label">Excel</div>
-                <div class="metric-value">{format_number(excel_value)}</div>
-            </div>
-            <div class="metric-row">
-                <div class="metric-label">Difference</div>
-                <div class="metric-value metric-diff {state_class}">{format_number(diff_value)}</div>
-            </div>
-            <div class="metric-row">
-                <div class="metric-label">Status</div>
-                <div class="metric-value metric-diff {state_class}">{status_text}</div>
-            </div>
+            <div class="metric-row"><div class="metric-label">IDL</div><div class="metric-value">{format_number(idl_value)}</div></div>
+            <div class="metric-row"><div class="metric-label">Excel</div><div class="metric-value">{format_number(excel_value)}</div></div>
+            <div class="metric-row"><div class="metric-label">Difference</div><div class="metric-value metric-diff {state_class}">{format_number(diff_value)}</div></div>
+            <div class="metric-row"><div class="metric-label">Status</div><div class="metric-value metric-diff {state_class}">{status_text}</div></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def build_metric(df, columns, metric_name, aliases):
+def build_metric(columns, metric_name, aliases):
     alias_terms = [normalize_column(alias) for alias in aliases]
 
     def metric_column(required_terms, excluded_terms=None):
@@ -255,30 +177,40 @@ def build_metric(df, columns, metric_name, aliases):
 
     return {
         "name": metric_name,
-        "idl": metric_column(["IDL"]),
-        "excel": metric_column(["EXCEL"]),
+        "idl": metric_column(["IDL"], ["EXCEL", "CHECK", "STATUS", "DIFF"]),
+        "excel": metric_column(["EXCEL"], ["CHECK", "STATUS", "DIFF"]),
         "diff": metric_column(["DIFF"]),
+        "check": metric_column(["CHECK"]) or metric_column(["STATUS"]),
     }
 
 
-def get_metric_values(row, metric):
-    return {
-        "name": metric["name"],
-        "idl": parse_number(row[metric["idl"]]) if metric["idl"] else pd.NA,
-        "excel": parse_number(row[metric["excel"]]) if metric["excel"] else pd.NA,
-        "diff": parse_number(row[metric["diff"]]) if metric["diff"] else pd.NA,
-    }
+def get_metric_values(period_slice, metric):
+    idl = period_slice[metric["idl"]].map(parse_number).sum()
+    excel = period_slice[metric["excel"]].map(parse_number).sum()
+    diff = period_slice[metric["diff"]].map(parse_number).sum() if metric["diff"] else idl - excel
+
+    if metric["check"]:
+        ok = period_slice[metric["check"]].map(status_is_ok).all()
+    else:
+        ok = diff_is_ok(diff)
+
+    return {"name": metric["name"], "idl": idl, "excel": excel, "diff": diff, "ok": ok}
 
 
 def show_schema_help(df, metrics):
     missing = []
     for metric in metrics:
-        for key in ["idl", "excel", "diff"]:
+        for key in ["idl", "excel"]:
             if not metric[key]:
                 missing.append(f"{metric['name']} {key.upper()}")
+        if not metric["check"] and not metric["diff"]:
+            missing.append(f"{metric['name']} CHECK or DIFF")
     if missing:
         st.error("Could not identify required control columns: " + ", ".join(missing))
-        st.caption("Expected column names like REV_IDL, REV_EXCEL, REV_DIFF, EBITDA_IDL, EBITDA_EXCEL, EBITDA_DIFF.")
+        st.caption(
+            "Expected names like REVENUES_IDL_AC_YTD, REVENUES_IDL_EXCEL_AC_YTD, "
+            "REVENUES_IDL_AC_YTD_CHECK, EBITDA_IDL_AC_YTD, EBITDA_IDL_EXCEL_AC_YTD, EBITDA_IDL_AC_YTD_CHECK."
+        )
         st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
         st.stop()
 
@@ -322,19 +254,17 @@ if not period_column:
 
 controls_df[period_column] = controls_df[period_column].fillna("").astype(str).str.strip()
 period_options = sorted(
-    controls_df.loc[
-        controls_df[period_column].str.match(r"^2026(0[1-9]|1[0-2])$", na=False),
-        period_column,
-    ].unique()
+    [period for period in controls_df[period_column].unique().tolist() if is_2026_period(period)],
+    key=period_sort_key,
 )
 if not period_options:
     st.warning("No 2026 periods found in ADS_CONTROLS_REV_2026.")
-    st.dataframe(controls_df.head(30), use_container_width=True)
+    st.dataframe(controls_df.sort_values(period_column).head(30), use_container_width=True)
     st.stop()
 
 metrics = [
-    build_metric(controls_df, columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
-    build_metric(controls_df, columns, "EBITDA", ["EBITDA"]),
+    build_metric(columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
+    build_metric(columns, "EBITDA", ["EBITDA"]),
 ]
 show_schema_help(controls_df, metrics)
 
@@ -348,7 +278,7 @@ st.markdown(
         <div class="fc-pill-row">
             <span class="fc-pill">Revenue: IDL vs Excel</span>
             <span class="fc-pill">EBITDA: IDL vs Excel</span>
-            <span class="fc-pill">Status from prepared diff</span>
+            <span class="fc-pill">Status from CHECK columns</span>
         </div>
     </div>
     """,
@@ -370,35 +300,23 @@ if period_df.empty:
     st.warning(f"No rows found for period {selected_period}.")
     st.stop()
 
-if len(period_df) > 1:
-    numeric_columns = [metric[key] for metric in metrics for key in ["idl", "excel", "diff"]]
-    current_row = period_df[numeric_columns].applymap(parse_number).sum().to_dict()
-else:
-    current_row = period_df.iloc[0].to_dict()
-
-metric_values = [get_metric_values(current_row, metric) for metric in metrics]
-ok_count = sum(is_ok(metric["diff"]) for metric in metric_values)
+metric_values = [get_metric_values(period_df, metric) for metric in metrics]
+ok_count = sum(metric["ok"] for metric in metric_values)
 render_status(ok_count, len(metric_values), selected_period)
 
 metric_cols = st.columns(len(metric_values))
 for col, metric in zip(metric_cols, metric_values):
     with col:
-        render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"])
+        render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["ok"])
 
 trend_rows = []
 for period in period_options:
     period_slice = controls_df[controls_df[period_column] == period]
-    if len(period_slice) > 1:
-        numeric_columns = [metric[key] for metric in metrics for key in ["idl", "excel", "diff"]]
-        trend_row = period_slice[numeric_columns].applymap(parse_number).sum().to_dict()
-    else:
-        trend_row = period_slice.iloc[0].to_dict()
-
     row = {"Period": period}
     for metric in metrics:
-        values = get_metric_values(trend_row, metric)
+        values = get_metric_values(period_slice, metric)
         row[f"{metric['name']} Diff"] = values["diff"]
-        row[f"{metric['name']} Status"] = "OK" if is_ok(values["diff"]) else "NOT OK"
+        row[f"{metric['name']} Status"] = "OK" if values["ok"] else "NOT OK"
     trend_rows.append(row)
 
 trend_df = pd.DataFrame(trend_rows).set_index("Period")
@@ -423,8 +341,13 @@ with st.expander("Source data and detected columns"):
                 "Metric": metric["name"],
                 "IDL column": metric["idl"],
                 "Excel column": metric["excel"],
-                "Diff column": metric["diff"],
+                "Diff column": metric["diff"] or "calculated from IDL - Excel",
+                "Check column": metric["check"],
             }
         )
     st.dataframe(pd.DataFrame(detected), use_container_width=True, hide_index=True)
-    st.dataframe(controls_df, use_container_width=True, hide_index=True)
+    st.dataframe(
+        controls_df.sort_values(period_column, key=lambda series: series.map(period_sort_key)),
+        use_container_width=True,
+        hide_index=True,
+    )
