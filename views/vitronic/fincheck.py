@@ -6,7 +6,7 @@ import streamlit as st
 from keboola_streamlit import KeboolaStreamlit
 
 
-TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_REV_2026"
+TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_2026"
 OK_TOLERANCE = 1
 
 
@@ -208,8 +208,9 @@ def show_schema_help(df, metrics):
     if missing:
         st.error("Could not identify required control columns: " + ", ".join(missing))
         st.caption(
-            "Expected names like REVENUES_IDL_AC_YTD, REVENUES_IDL_EXCEL_AC_YTD, "
-            "REVENUES_IDL_AC_YTD_CHECK, EBITDA_IDL_AC_YTD, EBITDA_IDL_EXCEL_AC_YTD, EBITDA_IDL_AC_YTD_CHECK."
+            "Expected names like REVENUES_IDL_AC_YTD, REVENUES_IDL_EXCEL_AC_YTD, REVENUES_IDL_AC_YTD_CHECK, "
+            "EBITDA_IDL_AC_YTD, EBITDA_IDL_EXCEL_AC_YTD, EBITDA_IDL_AC_YTD_CHECK, "
+            "CONSO_ADJUSTMENTS_IDL_AC_YTD, CONSO_ADJUSTMENTS_IDL_EXCEL_AC_YTD, CONSO_ADJUSTMENTS_IDL_AC_YTD_CHECK."
         )
         st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
         st.stop()
@@ -248,7 +249,7 @@ controls_df = controls_df.copy()
 columns = {column: normalize_column(column) for column in controls_df.columns}
 period_column = find_period_column(columns)
 if not period_column:
-    st.error("Could not identify period column in ADS_CONTROLS_REV_2026.")
+    st.error("Could not identify period column in ADS_CONTROLS_2026.")
     st.dataframe(pd.DataFrame({"Available columns": controls_df.columns.tolist()}), use_container_width=True)
     st.stop()
 
@@ -258,13 +259,14 @@ period_options = sorted(
     key=period_sort_key,
 )
 if not period_options:
-    st.warning("No 2026 periods found in ADS_CONTROLS_REV_2026.")
+    st.warning("No 2026 periods found in ADS_CONTROLS_2026.")
     st.dataframe(controls_df.sort_values(period_column).head(30), use_container_width=True)
     st.stop()
 
 metrics = [
     build_metric(columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
     build_metric(columns, "EBITDA", ["EBITDA"]),
+    build_metric(columns, "Conso Adjustments", ["CONSO", "CONSOLIDATION", "ADJ", "ADJUSTMENT", "ADJUSTMENTS"]),
 ]
 show_schema_help(controls_df, metrics)
 
@@ -274,10 +276,11 @@ st.markdown(
     """
     <div class="fc-hero">
         <div class="fc-title">Financial Checks</div>
-        <div class="fc-subtitle">2026 control dashboard based on prepared ADS_CONTROLS_REV_2026 results.</div>
+        <div class="fc-subtitle">2026 control dashboard based on prepared ADS_CONTROLS_2026 results.</div>
         <div class="fc-pill-row">
             <span class="fc-pill">Revenue: IDL vs Excel</span>
             <span class="fc-pill">EBITDA: IDL vs Excel</span>
+            <span class="fc-pill">Conso adjustments: IDL vs Excel</span>
             <span class="fc-pill">Status from CHECK columns</span>
         </div>
     </div>
