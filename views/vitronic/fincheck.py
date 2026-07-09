@@ -51,6 +51,7 @@ st.markdown(
         .metric-diff.ok { color: #178A4C; }
         .metric-diff.bad { color: #C73737; }
         .section-title { color: #132033; font-size: 1.02rem; font-weight: 760; margin: 0.75rem 0 0.4rem 0; }
+        .control-spacer { height: 1.78rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -293,12 +294,11 @@ filter_col, pbi_col, refresh_col = st.columns([2.2, 1.25, 1])
 with filter_col:
     selected_period = st.selectbox("Period", period_options, index=period_options.index(default_period))
 with pbi_col:
-    st.write("")
-    st.write("")
+    st.markdown('<div class="control-spacer"></div>', unsafe_allow_html=True)
     st.link_button("Open Power BI detail", POWER_BI_DETAIL_URL, use_container_width=True)
+    st.caption("Opens the Power BI report with control details.")
 with refresh_col:
-    st.write("")
-    st.write("")
+    st.markdown('<div class="control-spacer"></div>', unsafe_allow_html=True)
     if st.button("Refresh data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
