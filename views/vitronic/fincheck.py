@@ -6,12 +6,8 @@ import streamlit as st
 from keboola_streamlit import KeboolaStreamlit
 
 
-TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS"
-CONTROL_MEASURE = "REVENUES"
-PRIMARY_SOURCE_NAME = "VIT FINANCE"
-SECONDARY_SOURCE_NAME = "VIT FINANCE EXCEL"
-DEFAULT_CURRENCY = "EUR"
-DEFAULT_CBS_VALUES = {"", "CBS1", "CBS2 ADJ"}
+TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_REV_2026"
+OK_TOLERANCE = 1
 
 
 if st.button("Back to Vitronic Hub"):
@@ -21,115 +17,124 @@ st.markdown(
     """
     <style>
         .block-container {
-            padding-top: 2rem;
+            padding-top: 1.8rem;
             max-width: 1180px;
         }
-        .fincheck-hero {
-            border: 1px solid #D8E4F2;
+        .fc-hero {
+            border: 1px solid #D7E1EC;
             border-radius: 8px;
-            padding: 1.2rem 1.35rem;
-            background: linear-gradient(135deg, #F8FBFF 0%, #EEF6FF 100%);
+            padding: 1.15rem 1.25rem;
+            background: #F8FAFC;
             margin-bottom: 1rem;
         }
-        .fincheck-title {
-            color: #102033;
-            font-size: 2rem;
+        .fc-title {
+            color: #132033;
+            font-size: 1.9rem;
             font-weight: 760;
             line-height: 1.15;
             margin: 0;
         }
-        .fincheck-subtitle {
-            color: #526174;
-            font-size: 0.95rem;
+        .fc-subtitle {
+            color: #5D6B7B;
+            font-size: 0.94rem;
             margin-top: 0.35rem;
         }
-        .scope-row {
+        .fc-pill-row {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
-            margin-top: 0.9rem;
+            margin-top: 0.85rem;
         }
-        .scope-pill {
-            border: 1px solid #CFE0F3;
+        .fc-pill {
+            border: 1px solid #D7E1EC;
             background: #FFFFFF;
-            color: #1F3B57;
+            color: #31465C;
             border-radius: 999px;
-            padding: 0.28rem 0.7rem;
-            font-size: 0.82rem;
-            font-weight: 600;
+            padding: 0.28rem 0.72rem;
+            font-size: 0.8rem;
+            font-weight: 650;
         }
-        .kpi-card {
-            border: 1px solid #DDE7F3;
+        .fc-status-band {
+            border-radius: 8px;
+            padding: 0.95rem 1rem;
+            margin: 0.6rem 0 1rem 0;
+            border: 1px solid;
+        }
+        .fc-ok {
+            background: #ECFDF3;
+            border-color: #B7E4C7;
+            color: #126C3A;
+        }
+        .fc-bad {
+            background: #FEF2F2;
+            border-color: #F4C7C7;
+            color: #9F1D1D;
+        }
+        .fc-status-title {
+            font-size: 1.05rem;
+            font-weight: 760;
+            margin-bottom: 0.2rem;
+        }
+        .fc-status-note {
+            font-size: 0.88rem;
+            opacity: 0.88;
+        }
+        .metric-card {
+            border: 1px solid #DDE6F1;
             border-radius: 8px;
             background: #FFFFFF;
             padding: 1rem;
-            min-height: 132px;
-            box-shadow: 0 1px 6px rgba(16, 32, 51, 0.06);
+            min-height: 124px;
+            box-shadow: 0 1px 6px rgba(15, 23, 42, 0.06);
         }
-        .kpi-label {
-            color: #69788A;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0;
-            margin-bottom: 0.45rem;
+        .metric-card.ok {
+            border-left: 5px solid #22A06B;
         }
-        .kpi-value {
-            color: #102033;
-            font-size: 1.75rem;
-            font-weight: 760;
-            line-height: 1.15;
-            word-break: break-word;
+        .metric-card.bad {
+            border-left: 5px solid #E55353;
         }
-        .kpi-note {
-            color: #69788A;
-            font-size: 0.84rem;
-            margin-top: 0.45rem;
-        }
-        .status-ok .kpi-value { color: #178A4C; }
-        .status-warn .kpi-value { color: #B45309; }
-        .section-title {
-            color: #102033;
+        .metric-title {
+            color: #132033;
             font-size: 1.05rem;
-            font-weight: 740;
-            margin: 0.7rem 0 0.4rem 0;
+            font-weight: 760;
+            margin-bottom: 0.65rem;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.32rem 0;
+            border-top: 1px solid #EEF2F7;
+        }
+        .metric-row:first-of-type {
+            border-top: 0;
+        }
+        .metric-label {
+            color: #64748B;
+            font-size: 0.82rem;
+        }
+        .metric-value {
+            color: #132033;
+            font-size: 0.92rem;
+            font-weight: 700;
+            text-align: right;
+        }
+        .metric-diff.ok {
+            color: #178A4C;
+        }
+        .metric-diff.bad {
+            color: #C73737;
+        }
+        .section-title {
+            color: #132033;
+            font-size: 1.02rem;
+            font-weight: 760;
+            margin: 0.75rem 0 0.4rem 0;
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
-
-def normalize_text(value):
-    if pd.isna(value):
-        return ""
-    return str(value).strip().upper()
-
-
-def format_number(value):
-    if pd.isna(value):
-        return "-"
-    return f"{value:,.0f}".replace(",", " ")
-
-
-def format_pct(value):
-    if pd.isna(value):
-        return "-"
-    return f"{value:.2%}"
-
-
-def render_kpi(label, value, note="", status=None):
-    status_class = f" status-{status}" if status else ""
-    st.markdown(
-        f"""
-        <div class="kpi-card{status_class}">
-            <div class="kpi-label">{label}</div>
-            <div class="kpi-value">{value}</div>
-            <div class="kpi-note">{note}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 def get_config_value(*names, default=None):
@@ -140,36 +145,142 @@ def get_config_value(*names, default=None):
     return default
 
 
-def find_source(values, preferred, required_terms, excluded_terms=None):
-    excluded_terms = excluded_terms or []
-    normalized = {normalize_text(value): value for value in values}
-    preferred_norm = normalize_text(preferred)
-    if preferred_norm in normalized:
-        return normalized[preferred_norm]
+def normalize_column(value):
+    return re.sub(r"[^A-Z0-9]+", "_", str(value).strip().upper()).strip("_")
 
-    for value in values:
-        value_norm = normalize_text(value)
-        if all(term in value_norm for term in required_terms) and not any(
-            term in value_norm for term in excluded_terms
+
+def normalize_text(value):
+    if pd.isna(value):
+        return ""
+    return str(value).strip().upper()
+
+
+def parse_number(value):
+    if pd.isna(value):
+        return 0.0
+    if isinstance(value, str):
+        value = value.replace(" ", "").replace(",", ".")
+    return pd.to_numeric(value, errors="coerce")
+
+
+def format_number(value):
+    if pd.isna(value):
+        return "-"
+    return f"{value:,.0f}".replace(",", " ")
+
+
+def is_ok(value):
+    if pd.isna(value):
+        return False
+    return abs(float(value)) <= OK_TOLERANCE
+
+
+def find_column(columns, include_terms, exclude_terms=None):
+    exclude_terms = exclude_terms or []
+    for original, normalized in columns.items():
+        if all(term in normalized for term in include_terms) and not any(
+            term in normalized for term in exclude_terms
         ):
-            return value
+            return original
     return None
 
 
-def show_empty_state(title, detail, debug_steps=None, df=None):
-    st.warning(title)
-    st.caption(detail)
-    if debug_steps:
-        st.dataframe(pd.DataFrame(debug_steps), use_container_width=True, hide_index=True)
-    if df is not None and not df.empty:
-        st.caption("Available values in the current data slice")
-        diagnostics = []
-        for column in ["CBS", "GROUP_COMPANY", "CODE_PERIOD_VALUE", "CURRENCY", "CONTROL_MEASURE", "CODE_SOURCE"]:
-            if column in df.columns:
-                values = sorted(df[column].fillna("").astype(str).str.strip().unique().tolist())
-                diagnostics.append({"Column": column, "Values": ", ".join(values[:30])})
-        st.dataframe(pd.DataFrame(diagnostics), use_container_width=True, hide_index=True)
-    st.stop()
+def find_period_column(columns):
+    preferred = ["CODE_PERIOD_VALUE", "PERIOD", "MONTH", "CODE_PERIOD"]
+    for name in preferred:
+        for original, normalized in columns.items():
+            if normalized == name:
+                return original
+    for original, normalized in columns.items():
+        if "PERIOD" in normalized or "MONTH" in normalized:
+            return original
+    return None
+
+
+def render_status(ok_count, total_count, selected_period):
+    all_ok = ok_count == total_count
+    css_class = "fc-ok" if all_ok else "fc-bad"
+    title = "All controls OK" if all_ok else "Controls need attention"
+    note = f"{ok_count} of {total_count} checks are OK for period {selected_period}."
+    st.markdown(
+        f"""
+        <div class="fc-status-band {css_class}">
+            <div class="fc-status-title">{title}</div>
+            <div class="fc-status-note">{note}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_metric_card(title, idl_value, excel_value, diff_value):
+    ok = is_ok(diff_value)
+    state_class = "ok" if ok else "bad"
+    status_text = "OK" if ok else "NOT OK"
+    st.markdown(
+        f"""
+        <div class="metric-card {state_class}">
+            <div class="metric-title">{title}</div>
+            <div class="metric-row">
+                <div class="metric-label">IDL</div>
+                <div class="metric-value">{format_number(idl_value)}</div>
+            </div>
+            <div class="metric-row">
+                <div class="metric-label">Excel</div>
+                <div class="metric-value">{format_number(excel_value)}</div>
+            </div>
+            <div class="metric-row">
+                <div class="metric-label">Difference</div>
+                <div class="metric-value metric-diff {state_class}">{format_number(diff_value)}</div>
+            </div>
+            <div class="metric-row">
+                <div class="metric-label">Status</div>
+                <div class="metric-value metric-diff {state_class}">{status_text}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def build_metric(df, columns, metric_name, aliases):
+    alias_terms = [normalize_column(alias) for alias in aliases]
+
+    def metric_column(required_terms, excluded_terms=None):
+        for alias in alias_terms:
+            found = find_column(columns, [alias] + required_terms, excluded_terms)
+            if found:
+                return found
+        return None
+
+    return {
+        "name": metric_name,
+        "idl": metric_column(["IDL"]),
+        "excel": metric_column(["EXCEL"]),
+        "diff": metric_column(["DIFF"]),
+    }
+
+
+def get_metric_values(row, metric):
+    return {
+        "name": metric["name"],
+        "idl": parse_number(row[metric["idl"]]) if metric["idl"] else pd.NA,
+        "excel": parse_number(row[metric["excel"]]) if metric["excel"] else pd.NA,
+        "diff": parse_number(row[metric["diff"]]) if metric["diff"] else pd.NA,
+    }
+
+
+def show_schema_help(df, metrics):
+    missing = []
+    for metric in metrics:
+        for key in ["idl", "excel", "diff"]:
+            if not metric[key]:
+                missing.append(f"{metric['name']} {key.upper()}")
+    if missing:
+        st.error("Could not identify required control columns: " + ", ".join(missing))
+        st.caption("Expected column names like REV_IDL, REV_EXCEL, REV_DIFF, EBITDA_IDL, EBITDA_EXCEL, EBITDA_DIFF.")
+        st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
+        st.stop()
 
 
 kbc_url = get_config_value("KBC_URL", default="https://connection.europe-west3.gcp.keboola.com")
@@ -190,76 +301,63 @@ def load_controls():
     return keboola.read_table(TABLE_ID)
 
 
-with st.spinner("Loading ADS controls from Keboola..."):
+with st.spinner("Loading 2026 control dashboard data from Keboola..."):
     try:
         controls_df = load_controls()
     except Exception as exc:
         st.error(f"Could not load table {TABLE_ID}: {exc}")
         st.stop()
 
-required_columns = {
-    "CBS",
-    "GROUP_COMPANY",
-    "CODE_PERIOD_VALUE",
-    "CURRENCY",
-    "CONTROL_MEASURE",
-    "CODE_SOURCE",
-    "BALANCE_AMOUNT",
-    "BALANCE_AMOUNT_YTD",
-}
-missing_columns = sorted(required_columns - set(controls_df.columns))
-if missing_columns:
-    st.error("Missing required columns: " + ", ".join(missing_columns))
+if controls_df.empty:
+    st.warning(f"Table {TABLE_ID} is empty.")
     st.stop()
 
 controls_df = controls_df.copy()
-controls_df["BALANCE_AMOUNT"] = pd.to_numeric(controls_df["BALANCE_AMOUNT"], errors="coerce").fillna(0)
-controls_df["BALANCE_AMOUNT_YTD"] = pd.to_numeric(controls_df["BALANCE_AMOUNT_YTD"], errors="coerce").fillna(0)
-controls_df["CODE_PERIOD_VALUE"] = controls_df["CODE_PERIOD_VALUE"].fillna("").astype(str).str.strip()
-controls_df["_CBS_NORM"] = controls_df["CBS"].map(normalize_text)
-controls_df["_GROUP_COMPANY_NORM"] = controls_df["GROUP_COMPANY"].map(normalize_text)
-controls_df["_CURRENCY_NORM"] = controls_df["CURRENCY"].map(normalize_text)
-controls_df["_CONTROL_MEASURE_NORM"] = controls_df["CONTROL_MEASURE"].map(normalize_text)
+columns = {column: normalize_column(column) for column in controls_df.columns}
+period_column = find_period_column(columns)
+if not period_column:
+    st.error("Could not identify period column in ADS_CONTROLS_REV_2026.")
+    st.dataframe(pd.DataFrame({"Available columns": controls_df.columns.tolist()}), use_container_width=True)
+    st.stop()
 
+controls_df[period_column] = controls_df[period_column].fillna("").astype(str).str.strip()
 period_options = sorted(
     controls_df.loc[
-        controls_df["CODE_PERIOD_VALUE"].str.match(r"^2026(0[1-9]|1[0-2])$", na=False),
-        "CODE_PERIOD_VALUE",
+        controls_df[period_column].str.match(r"^2026(0[1-9]|1[0-2])$", na=False),
+        period_column,
     ].unique()
 )
 if not period_options:
-    show_empty_state(
-        "No 2026 periods found in ADS_CONTROLS.",
-        "The MVP period selector only allows months from 2026.",
-        df=controls_df,
-    )
+    st.warning("No 2026 periods found in ADS_CONTROLS_REV_2026.")
+    st.dataframe(controls_df.head(30), use_container_width=True)
+    st.stop()
+
+metrics = [
+    build_metric(controls_df, columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
+    build_metric(controls_df, columns, "EBITDA", ["EBITDA"]),
+]
+show_schema_help(controls_df, metrics)
 
 default_period = period_options[-1]
 
 st.markdown(
-    f"""
-    <div class="fincheck-hero">
-        <div class="fincheck-title">Financial Checks</div>
-        <div class="fincheck-subtitle">Revenue reconciliation between finance source and Excel control source.</div>
-        <div class="scope-row">
-            <span class="scope-pill">GROUP_COMPANY: V0*</span>
-            <span class="scope-pill">Currency: {DEFAULT_CURRENCY}</span>
-            <span class="scope-pill">CBS: blank, CBS1, CBS2 ADJ</span>
-            <span class="scope-pill">Measure: {CONTROL_MEASURE}</span>
+    """
+    <div class="fc-hero">
+        <div class="fc-title">Financial Checks</div>
+        <div class="fc-subtitle">2026 control dashboard based on prepared ADS_CONTROLS_REV_2026 results.</div>
+        <div class="fc-pill-row">
+            <span class="fc-pill">Revenue: IDL vs Excel</span>
+            <span class="fc-pill">EBITDA: IDL vs Excel</span>
+            <span class="fc-pill">Status from prepared diff</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-period_col, refresh_col = st.columns([3, 1])
-with period_col:
-    selected_period = st.selectbox(
-        "Period",
-        period_options,
-        index=period_options.index(default_period),
-        help="MVP allows only 2026 monthly periods.",
-    )
+filter_col, refresh_col = st.columns([3, 1])
+with filter_col:
+    selected_period = st.selectbox("Period", period_options, index=period_options.index(default_period))
 with refresh_col:
     st.write("")
     st.write("")
@@ -267,131 +365,66 @@ with refresh_col:
         st.cache_data.clear()
         st.rerun()
 
-steps = []
-base_df = controls_df.copy()
-steps.append({"Step": "Loaded rows", "Rows": len(base_df)})
+period_df = controls_df[controls_df[period_column] == selected_period]
+if period_df.empty:
+    st.warning(f"No rows found for period {selected_period}.")
+    st.stop()
 
-base_df = base_df[base_df["_GROUP_COMPANY_NORM"].str.match(r"^V0", na=False)]
-steps.append({"Step": "GROUP_COMPANY starts with V0", "Rows": len(base_df)})
+if len(period_df) > 1:
+    numeric_columns = [metric[key] for metric in metrics for key in ["idl", "excel", "diff"]]
+    current_row = period_df[numeric_columns].applymap(parse_number).sum().to_dict()
+else:
+    current_row = period_df.iloc[0].to_dict()
 
-base_df = base_df[base_df["_CURRENCY_NORM"] == DEFAULT_CURRENCY]
-steps.append({"Step": f"CURRENCY = {DEFAULT_CURRENCY}", "Rows": len(base_df)})
+metric_values = [get_metric_values(current_row, metric) for metric in metrics]
+ok_count = sum(is_ok(metric["diff"]) for metric in metric_values)
+render_status(ok_count, len(metric_values), selected_period)
 
-base_df = base_df[base_df["_CBS_NORM"].isin(DEFAULT_CBS_VALUES)]
-steps.append({"Step": "CBS blank/CBS1/CBS2 ADJ", "Rows": len(base_df)})
+metric_cols = st.columns(len(metric_values))
+for col, metric in zip(metric_cols, metric_values):
+    with col:
+        render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"])
 
-base_df = base_df[base_df["_CONTROL_MEASURE_NORM"] == CONTROL_MEASURE]
-steps.append({"Step": f"CONTROL_MEASURE = {CONTROL_MEASURE}", "Rows": len(base_df)})
+trend_rows = []
+for period in period_options:
+    period_slice = controls_df[controls_df[period_column] == period]
+    if len(period_slice) > 1:
+        numeric_columns = [metric[key] for metric in metrics for key in ["idl", "excel", "diff"]]
+        trend_row = period_slice[numeric_columns].applymap(parse_number).sum().to_dict()
+    else:
+        trend_row = period_slice.iloc[0].to_dict()
 
-if base_df.empty:
-    show_empty_state(
-        "No revenue rows found for the default dashboard scope.",
-        "Check the diagnostic table below. One of the default filters does not match the current ADS_CONTROLS data.",
-        debug_steps=steps,
-        df=controls_df,
-    )
+    row = {"Period": period}
+    for metric in metrics:
+        values = get_metric_values(trend_row, metric)
+        row[f"{metric['name']} Diff"] = values["diff"]
+        row[f"{metric['name']} Status"] = "OK" if is_ok(values["diff"]) else "NOT OK"
+    trend_rows.append(row)
 
-source_options = sorted(base_df["CODE_SOURCE"].fillna("").astype(str).str.strip().unique().tolist())
-primary_source = find_source(source_options, PRIMARY_SOURCE_NAME, ["FINANCE"], ["EXCEL"])
-secondary_source = find_source(source_options, SECONDARY_SOURCE_NAME, ["FINANCE", "EXCEL"])
-
-if not primary_source or not secondary_source:
-    show_empty_state(
-        "Could not identify both revenue sources.",
-        "Expected one finance source and one Excel control source in CODE_SOURCE after applying the default scope.",
-        debug_steps=steps + [{"Step": "Available CODE_SOURCE", "Rows": ", ".join(source_options)}],
-        df=base_df,
-    )
-
-current_df = base_df[base_df["CODE_PERIOD_VALUE"] == selected_period]
-if current_df.empty:
-    show_empty_state(
-        f"No revenue rows found for period {selected_period}.",
-        "Try another 2026 period or check whether ADS_CONTROLS contains the default scope for this month.",
-        debug_steps=steps + [{"Step": f"CODE_PERIOD_VALUE = {selected_period}", "Rows": 0}],
-        df=base_df,
-    )
-
-current_sources = current_df[current_df["CODE_SOURCE"].isin([primary_source, secondary_source])]
-summary = (
-    current_sources.groupby("CODE_SOURCE", dropna=False)["BALANCE_AMOUNT_YTD"]
-    .sum()
-    .reindex([primary_source, secondary_source])
-    .fillna(0)
-)
-
-primary_total = summary.loc[primary_source]
-secondary_total = summary.loc[secondary_source]
-difference = primary_total - secondary_total
-difference_pct = difference / secondary_total if secondary_total else pd.NA
-status_ok = abs(difference) < 1
-
-st.markdown('<div class="section-title">Revenue Control Summary</div>', unsafe_allow_html=True)
-kpi_1, kpi_2, kpi_3, kpi_4 = st.columns(4)
-with kpi_1:
-    render_kpi(primary_source, format_number(primary_total), f"YTD revenue, {selected_period}")
-with kpi_2:
-    render_kpi(secondary_source, format_number(secondary_total), f"YTD control, {selected_period}")
-with kpi_3:
-    render_kpi("Difference", format_number(difference), "Finance minus Excel")
-with kpi_4:
-    render_kpi(
-        "Status",
-        "OK" if status_ok else "Check",
-        f"Variance {format_pct(difference_pct)}",
-        status="ok" if status_ok else "warn",
-    )
-
-trend_df = (
-    base_df[base_df["CODE_SOURCE"].isin([primary_source, secondary_source])]
-    .groupby(["CODE_PERIOD_VALUE", "CODE_SOURCE"], dropna=False)["BALANCE_AMOUNT_YTD"]
-    .sum()
-    .reset_index()
-)
-trend_df = trend_df[trend_df["CODE_PERIOD_VALUE"].isin(period_options)]
-chart_df = (
-    trend_df.pivot(index="CODE_PERIOD_VALUE", columns="CODE_SOURCE", values="BALANCE_AMOUNT_YTD")
-    .reindex(columns=[primary_source, secondary_source])
-    .fillna(0)
-    .sort_index()
-)
-chart_df["Difference"] = chart_df[primary_source] - chart_df[secondary_source]
+trend_df = pd.DataFrame(trend_rows).set_index("Period")
 
 st.divider()
-chart_col, table_col = st.columns([1.45, 1])
+chart_col, table_col = st.columns([1.35, 1])
 with chart_col:
-    st.markdown('<div class="section-title">2026 YTD Trend</div>', unsafe_allow_html=True)
-    st.line_chart(chart_df[[primary_source, secondary_source]], use_container_width=True)
+    st.markdown('<div class="section-title">Difference Trend</div>', unsafe_allow_html=True)
+    diff_columns = [column for column in trend_df.columns if column.endswith(" Diff")]
+    st.line_chart(trend_df[diff_columns], use_container_width=True)
 
 with table_col:
-    st.markdown('<div class="section-title">Period Detail</div>', unsafe_allow_html=True)
-    detail_df = chart_df.copy()
-    detail_df["Difference %"] = detail_df.apply(
-        lambda row: row["Difference"] / row[secondary_source] if row[secondary_source] else pd.NA,
-        axis=1,
-    )
-    st.dataframe(
-        detail_df.style.format(
-            {
-                primary_source: "{:,.0f}",
-                secondary_source: "{:,.0f}",
-                "Difference": "{:,.0f}",
-                "Difference %": "{:.2%}",
-            }
-        ),
-        use_container_width=True,
-        height=330,
-    )
+    st.markdown('<div class="section-title">2026 Status Overview</div>', unsafe_allow_html=True)
+    status_table = trend_df.reset_index()
+    st.dataframe(status_table, use_container_width=True, hide_index=True, height=330)
 
-with st.expander("Dashboard scope diagnostics"):
-    scope = pd.DataFrame(
-        [
-            {"Filter": "GROUP_COMPANY", "Applied value": "starts with V0", "Matched rows": steps[1]["Rows"]},
-            {"Filter": "CURRENCY", "Applied value": DEFAULT_CURRENCY, "Matched rows": steps[2]["Rows"]},
-            {"Filter": "CBS", "Applied value": "blank, CBS1, CBS2 ADJ", "Matched rows": steps[3]["Rows"]},
-            {"Filter": "CONTROL_MEASURE", "Applied value": CONTROL_MEASURE, "Matched rows": steps[4]["Rows"]},
-            {"Filter": "Primary source", "Applied value": primary_source, "Matched rows": len(current_df[current_df["CODE_SOURCE"] == primary_source])},
-            {"Filter": "Comparison source", "Applied value": secondary_source, "Matched rows": len(current_df[current_df["CODE_SOURCE"] == secondary_source])},
-        ]
-    )
-    st.dataframe(scope, use_container_width=True, hide_index=True)
+with st.expander("Source data and detected columns"):
+    detected = []
+    for metric in metrics:
+        detected.append(
+            {
+                "Metric": metric["name"],
+                "IDL column": metric["idl"],
+                "Excel column": metric["excel"],
+                "Diff column": metric["diff"],
+            }
+        )
+    st.dataframe(pd.DataFrame(detected), use_container_width=True, hide_index=True)
+    st.dataframe(controls_df, use_container_width=True, hide_index=True)
