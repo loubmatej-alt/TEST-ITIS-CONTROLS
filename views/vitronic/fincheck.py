@@ -6,6 +6,8 @@ import streamlit as st
 from keboola_streamlit import KeboolaStreamlit
 
 
+# Source table prepared in Keboola. It is expected to have one row per 2026 period
+# and ready-made columns for IDL value, Excel value, and CHECK status per metric.
 TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_2026"
 OK_TOLERANCE = 1
 POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e63b7f7fbe8a/reports/e51d703b-a94a-4167-a664-0fde0315f0c8/a1be24ae0c7faff0bccb?experience=power-bi"
@@ -14,6 +16,8 @@ POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e6
 if st.button("Back to Vitronic Hub"):
     st.switch_page("views/vitronic/hub.py")
 
+# Page-local CSS. Keeping this here makes the dashboard self-contained and avoids
+# touching the rest of the Streamlit app styling.
 st.markdown(
     """
     <style>
@@ -62,6 +66,7 @@ st.markdown(
 
 
 def get_config_value(*names, default=None):
+    # Keboola apps can expose secrets either through st.secrets or env variables.
     for name in names:
         value = st.secrets.get(name) or os.environ.get(name)
         if value:
@@ -70,6 +75,8 @@ def get_config_value(*names, default=None):
 
 
 def normalize_column(value):
+    # Normalize names so column detection works across variants like REV-IDL,
+    # REV IDL, revenues_idl_ac_ytd, etc.
     return re.sub(r"[^A-Z0-9]+", "_", str(value).strip().upper()).strip("_")
 
 
@@ -80,6 +87,7 @@ def normalize_text(value):
 
 
 def parse_number(value):
+    # Keboola/Snowflake exports may arrive as strings with spaces or comma decimals.
     if pd.isna(value):
         return 0.0
     if isinstance(value, str):
@@ -105,6 +113,7 @@ def diff_is_ok(value):
 
 
 def period_sort_key(value):
+    # Supports both 202601 and 2026-01 formats and keeps months sorted naturally.
     text = str(value).strip()
     match = re.match(r"^(\d{4})[-_ ]?(\d{2})$", text)
     if not match:
@@ -118,6 +127,8 @@ def is_2026_period(value):
 
 
 def find_column(columns, include_terms, exclude_terms=None):
+    # Generic helper used by build_metric. It lets us add new metrics by alias
+    # instead of hardcoding exact physical column names.
     exclude_terms = exclude_terms or []
     for original, normalized in columns.items():
         if all(term in normalized for term in include_terms) and not any(term in normalized for term in exclude_terms):
@@ -138,6 +149,7 @@ def find_period_column(columns):
 
 
 def render_status(ok_count, incomplete_count, total_count, selected_period):
+    # Overall status priority: incomplete data first, then real OK/NOT OK.
     if incomplete_count:
         css_class = "fc-incomplete"
         title = "Incomplete data"
@@ -183,6 +195,9 @@ def render_metric_card(title, idl_value, excel_value, diff_value, state):
 
 
 def build_metric(columns, metric_name, aliases):
+    # A metric is defined by detectable IDL, Excel, optional DIFF, and CHECK columns.
+    # Example accepted names: PROFIT_IDL_AC_YTD, PROFIT_IDL_EXCEL_AC_YTD,
+    # PROFIT_IDL_AC_YTD_CHECK.
     alias_terms = [normalize_column(alias) for alias in aliases]
 
     def metric_column(required_terms, excluded_terms=None):
@@ -202,6 +217,8 @@ def build_metric(columns, metric_name, aliases):
 
 
 def get_metric_values(period_slice, metric):
+    # If either side is zero, the month is treated as not loaded yet instead of
+    # failing the control. This avoids false red NOT OK states for open months.
     idl = period_slice[metric["idl"]].map(parse_number).sum()
     excel = period_slice[metric["excel"]].map(parse_number).sum()
     diff = period_slice[metric["diff"]].map(parse_number).sum() if metric["diff"] else idl - excel
@@ -218,6 +235,7 @@ def get_metric_values(period_slice, metric):
 
 
 def show_schema_help(df, metrics):
+    # Fail with a useful schema diagnostic if the prepared table changes shape.
     missing = []
     for metric in metrics:
         for key in ["idl", "excel"]:
@@ -252,9 +270,11 @@ keboola = KeboolaStreamlit(root_url=kbc_url, token=kbc_token)
 
 @st.cache_data(ttl=600)
 def load_controls():
+    # Cached for 10 minutes; the Refresh button below clears this cache manually.
     return keboola.read_table(TABLE_ID)
 
 
+# Load and validate the prepared controls table before rendering the dashboard.
 with st.spinner("Loading 2026 control dashboard data from Keboola..."):
     try:
         controls_df = load_controls()
@@ -285,6 +305,7 @@ if not period_options:
     st.stop()
 
 metrics = [
+    # Display order of cards and status columns.
     build_metric(columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
     build_metric(columns, "EBITDA", ["EBITDA"]),
     build_metric(columns, "Profit", ["PROFIT", "PROFITS", "NET_PROFIT", "PBT", "EARNINGS"]),
@@ -321,6 +342,8 @@ with pbi_col:
 with refresh_col:
     st.markdown('<div class="control-spacer"></div>', unsafe_allow_html=True)
     if st.button("Refresh data", use_container_width=True):
+        # Useful after Keboola refreshes ADS_CONTROLS_2026 and Streamlit still
+        # has the old table cached.
         st.cache_data.clear()
         st.rerun()
     st.caption("Reloads the Keboola table cache.")
@@ -335,12 +358,14 @@ ok_count = sum(metric["state"] == "ok" for metric in metric_values)
 incomplete_count = sum(metric["state"] == "incomplete" for metric in metric_values)
 render_status(ok_count, incomplete_count, len(metric_values), selected_period)
 
+# Main KPI cards for the selected month.
 metric_cols = st.columns(len(metric_values))
 for col, metric in zip(metric_cols, metric_values):
     with col:
         render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["state"])
 
 trend_rows = []
+# Build one row per month for trend lines and the status overview table.
 for period in period_options:
     period_slice = controls_df[controls_df[period_column] == period]
     row = {"Period": period}
@@ -365,6 +390,7 @@ with table_col:
     st.dataframe(status_table, use_container_width=True, hide_index=True, height=330)
 
 with st.expander("Source data and detected columns"):
+    # Developer/debug view: shows how aliases mapped to real Keboola columns.
     detected = []
     for metric in metrics:
         detected.append(
