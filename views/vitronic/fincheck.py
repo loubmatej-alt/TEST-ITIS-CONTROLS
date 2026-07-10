@@ -32,6 +32,7 @@ st.markdown(
         .fc-status-band { border-radius: 8px; padding: 0.95rem 1rem; margin: 0.6rem 0 1rem 0; border: 1px solid; }
         .fc-ok { background: #ECFDF3; border-color: #B7E4C7; color: #126C3A; }
         .fc-bad { background: #FEF2F2; border-color: #F4C7C7; color: #9F1D1D; }
+        .fc-incomplete { background: #FFFBEB; border-color: #F6D58D; color: #8A5A00; }
         .fc-status-title { font-size: 1.05rem; font-weight: 760; margin-bottom: 0.2rem; }
         .fc-status-note { font-size: 0.88rem; opacity: 0.88; }
         .metric-card {
@@ -40,6 +41,7 @@ st.markdown(
         }
         .metric-card.ok { border-left: 5px solid #22A06B; }
         .metric-card.bad { border-left: 5px solid #E55353; }
+        .metric-card.incomplete { border-left: 5px solid #D99A1E; }
         .metric-title { color: #132033; font-size: 1.05rem; font-weight: 760; margin-bottom: 0.65rem; }
         .metric-row {
             display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.32rem 0;
@@ -50,6 +52,7 @@ st.markdown(
         .metric-value { color: #132033; font-size: 0.92rem; font-weight: 700; text-align: right; }
         .metric-diff.ok { color: #178A4C; }
         .metric-diff.bad { color: #C73737; }
+        .metric-diff.incomplete { color: #A16207; }
         .section-title { color: #132033; font-size: 1.02rem; font-weight: 760; margin: 0.75rem 0 0.4rem 0; }
         .control-spacer { height: 1.78rem; }
     </style>
@@ -134,11 +137,20 @@ def find_period_column(columns):
     return None
 
 
-def render_status(ok_count, total_count, selected_period):
-    all_ok = ok_count == total_count
-    css_class = "fc-ok" if all_ok else "fc-bad"
-    title = "All controls OK" if all_ok else "Controls need attention"
-    note = f"{ok_count} of {total_count} checks are OK for period {selected_period}."
+def render_status(ok_count, incomplete_count, total_count, selected_period):
+    if incomplete_count:
+        css_class = "fc-incomplete"
+        title = "Incomplete data"
+        note = f"{incomplete_count} of {total_count} checks have zero IDL or Excel values for period {selected_period}."
+    elif ok_count == total_count:
+        css_class = "fc-ok"
+        title = "All controls OK"
+        note = f"{ok_count} of {total_count} checks are OK for period {selected_period}."
+    else:
+        css_class = "fc-bad"
+        title = "Controls need attention"
+        note = f"{ok_count} of {total_count} checks are OK for period {selected_period}."
+
     st.markdown(
         f"""
         <div class="fc-status-band {css_class}">
@@ -150,17 +162,20 @@ def render_status(ok_count, total_count, selected_period):
     )
 
 
-def render_metric_card(title, idl_value, excel_value, diff_value, ok):
-    state_class = "ok" if ok else "bad"
-    status_text = "OK" if ok else "NOT OK"
+def render_metric_card(title, idl_value, excel_value, diff_value, state):
+    status_text = {
+        "ok": "OK",
+        "bad": "NOT OK",
+        "incomplete": "INCOMPLETE DATA",
+    }[state]
     st.markdown(
         f"""
-        <div class="metric-card {state_class}">
+        <div class="metric-card {state}">
             <div class="metric-title">{title}</div>
             <div class="metric-row"><div class="metric-label">IDL</div><div class="metric-value">{format_number(idl_value)}</div></div>
             <div class="metric-row"><div class="metric-label">Excel</div><div class="metric-value">{format_number(excel_value)}</div></div>
-            <div class="metric-row"><div class="metric-label">Difference</div><div class="metric-value metric-diff {state_class}">{format_number(diff_value)}</div></div>
-            <div class="metric-row"><div class="metric-label">Status</div><div class="metric-value metric-diff {state_class}">{status_text}</div></div>
+            <div class="metric-row"><div class="metric-label">Difference</div><div class="metric-value metric-diff {state}">{format_number(diff_value)}</div></div>
+            <div class="metric-row"><div class="metric-label">Status</div><div class="metric-value metric-diff {state}">{status_text}</div></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -190,13 +205,16 @@ def get_metric_values(period_slice, metric):
     idl = period_slice[metric["idl"]].map(parse_number).sum()
     excel = period_slice[metric["excel"]].map(parse_number).sum()
     diff = period_slice[metric["diff"]].map(parse_number).sum() if metric["diff"] else idl - excel
+    incomplete = abs(idl) <= OK_TOLERANCE or abs(excel) <= OK_TOLERANCE
 
-    if metric["check"]:
-        ok = period_slice[metric["check"]].map(status_is_ok).all()
+    if incomplete:
+        state = "incomplete"
+    elif metric["check"]:
+        state = "ok" if period_slice[metric["check"]].map(status_is_ok).all() else "bad"
     else:
-        ok = diff_is_ok(diff)
+        state = "ok" if diff_is_ok(diff) else "bad"
 
-    return {"name": metric["name"], "idl": idl, "excel": excel, "diff": diff, "ok": ok}
+    return {"name": metric["name"], "idl": idl, "excel": excel, "diff": diff, "state": state}
 
 
 def show_schema_help(df, metrics):
@@ -269,8 +287,8 @@ if not period_options:
 metrics = [
     build_metric(columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
     build_metric(columns, "EBITDA", ["EBITDA"]),
-    build_metric(columns, "Conso Adjustments", ["CONSO", "CONSOLIDATION", "ADJ", "ADJUSTMENT", "ADJUSTMENTS"]),
     build_metric(columns, "Profit", ["PROFIT", "PROFITS", "NET_PROFIT", "PBT", "EARNINGS"]),
+    build_metric(columns, "Conso Adjustments", ["CONSO", "CONSOLIDATION", "ADJ", "ADJUSTMENT", "ADJUSTMENTS"]),
 ]
 show_schema_help(controls_df, metrics)
 
@@ -284,8 +302,8 @@ st.markdown(
         <div class="fc-pill-row">
             <span class="fc-pill">Revenue: IDL vs Excel</span>
             <span class="fc-pill">EBITDA: IDL vs Excel</span>
-            <span class="fc-pill">Conso adjustments: IDL vs Excel</span>
             <span class="fc-pill">Profit: IDL vs Excel</span>
+            <span class="fc-pill">Conso adjustments: IDL vs Excel</span>
             <span class="fc-pill">Status from CHECK columns</span>
         </div>
     </div>
@@ -313,13 +331,14 @@ if period_df.empty:
     st.stop()
 
 metric_values = [get_metric_values(period_df, metric) for metric in metrics]
-ok_count = sum(metric["ok"] for metric in metric_values)
-render_status(ok_count, len(metric_values), selected_period)
+ok_count = sum(metric["state"] == "ok" for metric in metric_values)
+incomplete_count = sum(metric["state"] == "incomplete" for metric in metric_values)
+render_status(ok_count, incomplete_count, len(metric_values), selected_period)
 
 metric_cols = st.columns(len(metric_values))
 for col, metric in zip(metric_cols, metric_values):
     with col:
-        render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["ok"])
+        render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["state"])
 
 trend_rows = []
 for period in period_options:
@@ -328,7 +347,7 @@ for period in period_options:
     for metric in metrics:
         values = get_metric_values(period_slice, metric)
         row[f"{metric['name']} Diff"] = values["diff"]
-        row[f"{metric['name']} Status"] = "OK" if values["ok"] else "NOT OK"
+        row[f"{metric['name']} Status"] = {"ok": "OK", "bad": "NOT OK", "incomplete": "INCOMPLETE DATA"}[values["state"]]
     trend_rows.append(row)
 
 trend_df = pd.DataFrame(trend_rows).set_index("Period")
