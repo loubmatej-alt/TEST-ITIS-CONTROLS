@@ -212,7 +212,8 @@ def show_schema_help(df, metrics):
         st.caption(
             "Expected names like REVENUES_IDL_AC_YTD, REVENUES_IDL_EXCEL_AC_YTD, REVENUES_IDL_AC_YTD_CHECK, "
             "EBITDA_IDL_AC_YTD, EBITDA_IDL_EXCEL_AC_YTD, EBITDA_IDL_AC_YTD_CHECK, "
-            "CONSO_ADJUSTMENTS_IDL_AC_YTD, CONSO_ADJUSTMENTS_IDL_EXCEL_AC_YTD, CONSO_ADJUSTMENTS_IDL_AC_YTD_CHECK."
+            "CONSO_ADJUSTMENTS_IDL_AC_YTD, CONSO_ADJUSTMENTS_IDL_EXCEL_AC_YTD, CONSO_ADJUSTMENTS_IDL_AC_YTD_CHECK, "
+            "PROFIT_IDL_AC_YTD, PROFIT_IDL_EXCEL_AC_YTD, PROFIT_IDL_AC_YTD_CHECK."
         )
         st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
         st.stop()
@@ -269,6 +270,7 @@ metrics = [
     build_metric(columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
     build_metric(columns, "EBITDA", ["EBITDA"]),
     build_metric(columns, "Conso Adjustments", ["CONSO", "CONSOLIDATION", "ADJ", "ADJUSTMENT", "ADJUSTMENTS"]),
+    build_metric(columns, "Profit", ["PROFIT", "PROFITS", "NET_PROFIT", "PBT", "EARNINGS"]),
 ]
 show_schema_help(controls_df, metrics)
 
@@ -283,6 +285,7 @@ st.markdown(
             <span class="fc-pill">Revenue: IDL vs Excel</span>
             <span class="fc-pill">EBITDA: IDL vs Excel</span>
             <span class="fc-pill">Conso adjustments: IDL vs Excel</span>
+            <span class="fc-pill">Profit: IDL vs Excel</span>
             <span class="fc-pill">Status from CHECK columns</span>
         </div>
     </div>
