@@ -59,6 +59,7 @@ st.markdown(
         .metric-diff.bad { color: #C73737; }
         .metric-diff.incomplete { color: #A16207; }
         .section-title { color: #132033; font-size: 1.02rem; font-weight: 760; margin: 0.75rem 0 0.4rem 0; }
+        .section-note { color: #64748B; font-size: 0.88rem; margin: -0.15rem 0 0.85rem 0; }
         .control-spacer { height: 1.78rem; }
     </style>
     """,
@@ -154,7 +155,7 @@ def render_status(ok_count, incomplete_count, total_count, selected_period):
     if incomplete_count:
         css_class = "fc-incomplete"
         title = "Incomplete data"
-        note = f"{incomplete_count} of {total_count} checks have zero IDL or Excel values for period {selected_period}."
+        note = f"{incomplete_count} of {total_count} checks have zero comparison values for period {selected_period}."
     elif ok_count == total_count:
         css_class = "fc-ok"
         title = "All controls OK"
@@ -222,9 +223,9 @@ def build_metric(columns, metric_name, aliases):
 
 
 def build_monthly_ytd_metric(columns, metric_name, aliases):
-    # Monthly-vs-YTD checks live in a separate prepared table. We detect common
-    # naming patterns such as REVENUES_M_AC, REVENUES_MONTHLY, REVENUES_YTD,
-    # and REVENUES_CHECK.
+    # Monthly-vs-YTD checks live in a separate prepared table. The "monthly" side
+    # is actually cumulative monthly data, e.g. REVENUES_IDL_AC_CALCULATED_YTD.
+    # It is compared against the reported IDL YTD column for the same month.
     alias_terms = [normalize_column(alias) for alias in aliases]
 
     def metric_column(required_terms, excluded_terms=None):
@@ -234,16 +235,19 @@ def build_monthly_ytd_metric(columns, metric_name, aliases):
                 return found
         return None
 
-    monthly_column = (
-        metric_column(["MONTHLY"], ["YTD", "CHECK", "STATUS", "DIFF"])
-        or metric_column(["MONTH"], ["YTD", "CHECK", "STATUS", "DIFF"])
-        or metric_column(["M"], ["YTD", "CHECK", "STATUS", "DIFF"])
+    calculated_ytd_column = metric_column(
+        ["IDL", "CALCULATED", "YTD"],
+        ["EXCEL", "CHECK", "STATUS", "DIFF"],
+    )
+    reported_ytd_column = metric_column(
+        ["IDL", "YTD"],
+        ["EXCEL", "CALCULATED", "CHECK", "STATUS", "DIFF"],
     )
 
     return {
         "name": metric_name,
-        "monthly": monthly_column,
-        "ytd": metric_column(["YTD"], ["CHECK", "STATUS", "DIFF"]),
+        "monthly": calculated_ytd_column,
+        "ytd": reported_ytd_column,
         "diff": metric_column(["DIFF"]),
         "check": metric_column(["CHECK"]) or metric_column(["STATUS"]),
     }
@@ -315,8 +319,8 @@ def show_monthly_ytd_schema_help(df, metrics):
     if missing:
         st.error("Could not identify required monthly-vs-YTD columns: " + ", ".join(missing))
         st.caption(
-            "Expected names like REVENUES_M/YTD/CHECK, EBITDA_M/YTD/CHECK, and PROFIT_M/YTD/CHECK. "
-            "Exact names can differ; aliases are detected automatically."
+            "Expected names like REVENUES_IDL_AC_CALCULATED_YTD and REVENUES_IDL_AC_YTD "
+            "plus optional CHECK/DIFF columns for Revenue, EBITDA, and Profit."
         )
         st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
         st.stop()
@@ -455,13 +459,20 @@ if period_df.empty:
 metric_values = [get_metric_values(period_df, metric) for metric in metrics]
 ok_count = sum(metric["state"] == "ok" for metric in metric_values)
 incomplete_count = sum(metric["state"] == "incomplete" for metric in metric_values)
-render_status(ok_count, incomplete_count, len(metric_values), selected_period)
 
-# Main KPI cards for the selected month.
-metric_cols = st.columns(len(metric_values))
-for col, metric in zip(metric_cols, metric_values):
-    with col:
-        render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["state"])
+with st.container(border=True):
+    st.markdown('<div class="section-title">IDL vs Excel Controls</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">Compares prepared IDL figures against Excel control values from ADS_CONTROLS_2026.</div>',
+        unsafe_allow_html=True,
+    )
+    render_status(ok_count, incomplete_count, len(metric_values), selected_period)
+
+    # Main KPI cards for the selected month.
+    metric_cols = st.columns(len(metric_values))
+    for col, metric in zip(metric_cols, metric_values):
+        with col:
+            render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["state"])
 
 monthly_ytd_period_df = monthly_ytd_df[monthly_ytd_df[monthly_ytd_period_column] == selected_period]
 if monthly_ytd_period_df.empty:
@@ -471,20 +482,34 @@ if monthly_ytd_period_df.empty:
 monthly_ytd_values = [
     get_monthly_ytd_values(monthly_ytd_period_df, metric) for metric in monthly_ytd_metrics
 ]
+monthly_ytd_ok_count = sum(metric["state"] == "ok" for metric in monthly_ytd_values)
+monthly_ytd_incomplete_count = sum(metric["state"] == "incomplete" for metric in monthly_ytd_values)
 
-st.markdown('<div class="section-title">Monthly vs YTD Controls</div>', unsafe_allow_html=True)
-monthly_ytd_cols = st.columns(len(monthly_ytd_values))
-for col, metric in zip(monthly_ytd_cols, monthly_ytd_values):
-    with col:
-        render_comparison_card(
-            metric["name"],
-            "Monthly",
-            metric["monthly"],
-            "YTD",
-            metric["ytd"],
-            metric["diff"],
-            metric["state"],
-        )
+with st.container(border=True):
+    st.markdown('<div class="section-title">Calculated Monthly YTD vs Reported YTD</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">Compares cumulatively calculated monthly values, e.g. REVENUES_IDL_AC_CALCULATED_YTD, against reported IDL YTD values from ADS_CONTROLS_M_YTD_2026.</div>',
+        unsafe_allow_html=True,
+    )
+    render_status(
+        monthly_ytd_ok_count,
+        monthly_ytd_incomplete_count,
+        len(monthly_ytd_values),
+        selected_period,
+    )
+
+    monthly_ytd_cols = st.columns(len(monthly_ytd_values))
+    for col, metric in zip(monthly_ytd_cols, monthly_ytd_values):
+        with col:
+            render_comparison_card(
+                metric["name"],
+                "Calculated monthly YTD",
+                metric["monthly"],
+                "Reported YTD",
+                metric["ytd"],
+                metric["diff"],
+                metric["state"],
+            )
 
 trend_rows = []
 # Build one row per month for trend lines and the status overview table.
