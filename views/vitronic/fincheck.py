@@ -9,6 +9,7 @@ from keboola_streamlit import KeboolaStreamlit
 # Source table prepared in Keboola. It is expected to have one row per 2026 period
 # and ready-made columns for IDL value, Excel value, and CHECK status per metric.
 TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_2026"
+MONTHLY_YTD_TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_M_YTD_2026"
 OK_TOLERANCE = 1
 POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e63b7f7fbe8a/reports/e51d703b-a94a-4167-a664-0fde0315f0c8/a1be24ae0c7faff0bccb?experience=power-bi"
 
@@ -174,7 +175,7 @@ def render_status(ok_count, incomplete_count, total_count, selected_period):
     )
 
 
-def render_metric_card(title, idl_value, excel_value, diff_value, state):
+def render_comparison_card(title, left_label, left_value, right_label, right_value, diff_value, state):
     status_text = {
         "ok": "OK",
         "bad": "NOT OK",
@@ -184,14 +185,18 @@ def render_metric_card(title, idl_value, excel_value, diff_value, state):
         f"""
         <div class="metric-card {state}">
             <div class="metric-title">{title}</div>
-            <div class="metric-row"><div class="metric-label">IDL</div><div class="metric-value">{format_number(idl_value)}</div></div>
-            <div class="metric-row"><div class="metric-label">Excel</div><div class="metric-value">{format_number(excel_value)}</div></div>
+            <div class="metric-row"><div class="metric-label">{left_label}</div><div class="metric-value">{format_number(left_value)}</div></div>
+            <div class="metric-row"><div class="metric-label">{right_label}</div><div class="metric-value">{format_number(right_value)}</div></div>
             <div class="metric-row"><div class="metric-label">Difference</div><div class="metric-value metric-diff {state}">{format_number(diff_value)}</div></div>
             <div class="metric-row"><div class="metric-label">Status</div><div class="metric-value metric-diff {state}">{status_text}</div></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_metric_card(title, idl_value, excel_value, diff_value, state):
+    render_comparison_card(title, "IDL", idl_value, "Excel", excel_value, diff_value, state)
 
 
 def build_metric(columns, metric_name, aliases):
@@ -216,6 +221,34 @@ def build_metric(columns, metric_name, aliases):
     }
 
 
+def build_monthly_ytd_metric(columns, metric_name, aliases):
+    # Monthly-vs-YTD checks live in a separate prepared table. We detect common
+    # naming patterns such as REVENUES_M_AC, REVENUES_MONTHLY, REVENUES_YTD,
+    # and REVENUES_CHECK.
+    alias_terms = [normalize_column(alias) for alias in aliases]
+
+    def metric_column(required_terms, excluded_terms=None):
+        for alias in alias_terms:
+            found = find_column(columns, [alias] + required_terms, excluded_terms)
+            if found:
+                return found
+        return None
+
+    monthly_column = (
+        metric_column(["MONTHLY"], ["YTD", "CHECK", "STATUS", "DIFF"])
+        or metric_column(["MONTH"], ["YTD", "CHECK", "STATUS", "DIFF"])
+        or metric_column(["M"], ["YTD", "CHECK", "STATUS", "DIFF"])
+    )
+
+    return {
+        "name": metric_name,
+        "monthly": monthly_column,
+        "ytd": metric_column(["YTD"], ["CHECK", "STATUS", "DIFF"]),
+        "diff": metric_column(["DIFF"]),
+        "check": metric_column(["CHECK"]) or metric_column(["STATUS"]),
+    }
+
+
 def get_metric_values(period_slice, metric):
     # If either side is zero, the month is treated as not loaded yet instead of
     # failing the control. This avoids false red NOT OK states for open months.
@@ -234,6 +267,22 @@ def get_metric_values(period_slice, metric):
     return {"name": metric["name"], "idl": idl, "excel": excel, "diff": diff, "state": state}
 
 
+def get_monthly_ytd_values(period_slice, metric):
+    monthly = period_slice[metric["monthly"]].map(parse_number).sum()
+    ytd = period_slice[metric["ytd"]].map(parse_number).sum()
+    diff = period_slice[metric["diff"]].map(parse_number).sum() if metric["diff"] else monthly - ytd
+    incomplete = abs(monthly) <= OK_TOLERANCE or abs(ytd) <= OK_TOLERANCE
+
+    if incomplete:
+        state = "incomplete"
+    elif metric["check"]:
+        state = "ok" if period_slice[metric["check"]].map(status_is_ok).all() else "bad"
+    else:
+        state = "ok" if diff_is_ok(diff) else "bad"
+
+    return {"name": metric["name"], "monthly": monthly, "ytd": ytd, "diff": diff, "state": state}
+
+
 def show_schema_help(df, metrics):
     # Fail with a useful schema diagnostic if the prepared table changes shape.
     missing = []
@@ -250,6 +299,24 @@ def show_schema_help(df, metrics):
             "EBITDA_IDL_AC_YTD, EBITDA_IDL_EXCEL_AC_YTD, EBITDA_IDL_AC_YTD_CHECK, "
             "CONSO_ADJUSTMENTS_IDL_AC_YTD, CONSO_ADJUSTMENTS_IDL_EXCEL_AC_YTD, CONSO_ADJUSTMENTS_IDL_AC_YTD_CHECK, "
             "PROFIT_IDL_AC_YTD, PROFIT_IDL_EXCEL_AC_YTD, PROFIT_IDL_AC_YTD_CHECK."
+        )
+        st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
+        st.stop()
+
+
+def show_monthly_ytd_schema_help(df, metrics):
+    missing = []
+    for metric in metrics:
+        for key in ["monthly", "ytd"]:
+            if not metric[key]:
+                missing.append(f"{metric['name']} {key.upper()}")
+        if not metric["check"] and not metric["diff"]:
+            missing.append(f"{metric['name']} CHECK or DIFF")
+    if missing:
+        st.error("Could not identify required monthly-vs-YTD columns: " + ", ".join(missing))
+        st.caption(
+            "Expected names like REVENUES_M/YTD/CHECK, EBITDA_M/YTD/CHECK, and PROFIT_M/YTD/CHECK. "
+            "Exact names can differ; aliases are detected automatically."
         )
         st.dataframe(pd.DataFrame({"Available columns": df.columns.tolist()}), use_container_width=True)
         st.stop()
@@ -274,6 +341,11 @@ def load_controls():
     return keboola.read_table(TABLE_ID)
 
 
+@st.cache_data(ttl=600)
+def load_monthly_ytd_controls():
+    return keboola.read_table(MONTHLY_YTD_TABLE_ID)
+
+
 # Load and validate the prepared controls table before rendering the dashboard.
 with st.spinner("Loading 2026 control dashboard data from Keboola..."):
     try:
@@ -284,6 +356,17 @@ with st.spinner("Loading 2026 control dashboard data from Keboola..."):
 
 if controls_df.empty:
     st.warning(f"Table {TABLE_ID} is empty.")
+    st.stop()
+
+with st.spinner("Loading monthly vs YTD control data from Keboola..."):
+    try:
+        monthly_ytd_df = load_monthly_ytd_controls()
+    except Exception as exc:
+        st.error(f"Could not load table {MONTHLY_YTD_TABLE_ID}: {exc}")
+        st.stop()
+
+if monthly_ytd_df.empty:
+    st.warning(f"Table {MONTHLY_YTD_TABLE_ID} is empty.")
     st.stop()
 
 controls_df = controls_df.copy()
@@ -312,6 +395,22 @@ metrics = [
     build_metric(columns, "Conso Adjustments", ["CONSO", "CONSOLIDATION", "ADJ", "ADJUSTMENT", "ADJUSTMENTS"]),
 ]
 show_schema_help(controls_df, metrics)
+
+monthly_ytd_df = monthly_ytd_df.copy()
+monthly_ytd_columns = {column: normalize_column(column) for column in monthly_ytd_df.columns}
+monthly_ytd_period_column = find_period_column(monthly_ytd_columns)
+if not monthly_ytd_period_column:
+    st.error("Could not identify period column in ADS_CONTROLS_M_YTD_2026.")
+    st.dataframe(pd.DataFrame({"Available columns": monthly_ytd_df.columns.tolist()}), use_container_width=True)
+    st.stop()
+
+monthly_ytd_df[monthly_ytd_period_column] = monthly_ytd_df[monthly_ytd_period_column].fillna("").astype(str).str.strip()
+monthly_ytd_metrics = [
+    build_monthly_ytd_metric(monthly_ytd_columns, "Revenue", ["REV", "REVENUE", "REVENUES"]),
+    build_monthly_ytd_metric(monthly_ytd_columns, "EBITDA", ["EBITDA"]),
+    build_monthly_ytd_metric(monthly_ytd_columns, "Profit", ["PROFIT", "PROFITS", "NET_PROFIT", "PBT", "EARNINGS"]),
+]
+show_monthly_ytd_schema_help(monthly_ytd_df, monthly_ytd_metrics)
 
 default_period = period_options[-1]
 
@@ -364,6 +463,29 @@ for col, metric in zip(metric_cols, metric_values):
     with col:
         render_metric_card(metric["name"], metric["idl"], metric["excel"], metric["diff"], metric["state"])
 
+monthly_ytd_period_df = monthly_ytd_df[monthly_ytd_df[monthly_ytd_period_column] == selected_period]
+if monthly_ytd_period_df.empty:
+    st.warning(f"No monthly vs YTD rows found for period {selected_period}.")
+    st.stop()
+
+monthly_ytd_values = [
+    get_monthly_ytd_values(monthly_ytd_period_df, metric) for metric in monthly_ytd_metrics
+]
+
+st.markdown('<div class="section-title">Monthly vs YTD Controls</div>', unsafe_allow_html=True)
+monthly_ytd_cols = st.columns(len(monthly_ytd_values))
+for col, metric in zip(monthly_ytd_cols, monthly_ytd_values):
+    with col:
+        render_comparison_card(
+            metric["name"],
+            "Monthly",
+            metric["monthly"],
+            "YTD",
+            metric["ytd"],
+            metric["diff"],
+            metric["state"],
+        )
+
 trend_rows = []
 # Build one row per month for trend lines and the status overview table.
 for period in period_options:
@@ -403,8 +525,25 @@ with st.expander("Source data and detected columns"):
             }
         )
     st.dataframe(pd.DataFrame(detected), use_container_width=True, hide_index=True)
+    monthly_ytd_detected = []
+    for metric in monthly_ytd_metrics:
+        monthly_ytd_detected.append(
+            {
+                "Metric": metric["name"],
+                "Monthly column": metric["monthly"],
+                "YTD column": metric["ytd"],
+                "Diff column": metric["diff"] or "calculated from Monthly - YTD",
+                "Check column": metric["check"],
+            }
+        )
+    st.dataframe(pd.DataFrame(monthly_ytd_detected), use_container_width=True, hide_index=True)
     st.dataframe(
         controls_df.sort_values(period_column, key=lambda series: series.map(period_sort_key)),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.dataframe(
+        monthly_ytd_df.sort_values(monthly_ytd_period_column, key=lambda series: series.map(period_sort_key)),
         use_container_width=True,
         hide_index=True,
     )
