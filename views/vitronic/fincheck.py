@@ -10,6 +10,7 @@ from keboola_streamlit import KeboolaStreamlit
 # and ready-made columns for IDL value, Excel value, and CHECK status per metric.
 TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_2026"
 MONTHLY_YTD_TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_M_YTD_2026"
+BALANCE_SHEET_TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_BS_2026"
 OK_TOLERANCE = 1
 POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e63b7f7fbe8a/reports/e51d703b-a94a-4167-a664-0fde0315f0c8/a1be24ae0c7faff0bccb?experience=power-bi"
 
@@ -146,6 +147,18 @@ def find_period_column(columns):
                 return original
     for original, normalized in columns.items():
         if "PERIOD" in normalized or "MONTH" in normalized:
+            return original
+    return None
+
+
+def find_group_company_column(columns):
+    preferred = ["GROUP_COMPANY", "CODE_GROUP_COMPANY", "COMPANY", "GROUP_COMP"]
+    for name in preferred:
+        for original, normalized in columns.items():
+            if normalized == name:
+                return original
+    for original, normalized in columns.items():
+        if "GROUP" in normalized and "COMPANY" in normalized:
             return original
     return None
 
@@ -326,6 +339,28 @@ def show_monthly_ytd_schema_help(df, metrics):
         st.stop()
 
 
+def build_balance_sheet_controls(df, period_column, group_company_column):
+    # Balance sheet rows are already scoped to CBS2 in the prepared Keboola table.
+    # A company is OK when the YTD balance amount is exactly zero within tolerance.
+    period_df = df[df[period_column] == selected_period].copy()
+    if period_df.empty:
+        st.warning(f"No balance sheet rows found for period {selected_period}.")
+        st.stop()
+
+    period_df["BALANCE_AMOUNT_YTD"] = period_df["BALANCE_AMOUNT_YTD"].map(parse_number)
+    result_df = (
+        period_df.groupby(group_company_column, dropna=False)["BALANCE_AMOUNT_YTD"]
+        .sum()
+        .reset_index()
+        .rename(columns={group_company_column: "Group company", "BALANCE_AMOUNT_YTD": "Balance amount YTD"})
+        .sort_values("Group company")
+    )
+    result_df["Status"] = result_df["Balance amount YTD"].map(
+        lambda value: "OK" if diff_is_ok(value) else "NOT OK"
+    )
+    return result_df
+
+
 kbc_url = get_config_value("KBC_URL", default="https://connection.europe-west3.gcp.keboola.com")
 kbc_token = get_config_value("EDITOR_TOKEN", "KBC_TOKEN", "KBC_STORAGE_TOKEN", "STORAGE_TOKEN")
 
@@ -350,6 +385,11 @@ def load_monthly_ytd_controls():
     return keboola.read_table(MONTHLY_YTD_TABLE_ID)
 
 
+@st.cache_data(ttl=600)
+def load_balance_sheet_controls():
+    return keboola.read_table(BALANCE_SHEET_TABLE_ID)
+
+
 # Load and validate the prepared controls table before rendering the dashboard.
 with st.spinner("Loading 2026 control dashboard data from Keboola..."):
     try:
@@ -371,6 +411,17 @@ with st.spinner("Loading monthly vs YTD control data from Keboola..."):
 
 if monthly_ytd_df.empty:
     st.warning(f"Table {MONTHLY_YTD_TABLE_ID} is empty.")
+    st.stop()
+
+with st.spinner("Loading balance sheet control data from Keboola..."):
+    try:
+        balance_sheet_df = load_balance_sheet_controls()
+    except Exception as exc:
+        st.error(f"Could not load table {BALANCE_SHEET_TABLE_ID}: {exc}")
+        st.stop()
+
+if balance_sheet_df.empty:
+    st.warning(f"Table {BALANCE_SHEET_TABLE_ID} is empty.")
     st.stop()
 
 controls_df = controls_df.copy()
@@ -415,6 +466,27 @@ monthly_ytd_metrics = [
     build_monthly_ytd_metric(monthly_ytd_columns, "Profit", ["PROFIT", "PROFITS", "NET_PROFIT", "PBT", "EARNINGS"]),
 ]
 show_monthly_ytd_schema_help(monthly_ytd_df, monthly_ytd_metrics)
+
+balance_sheet_df = balance_sheet_df.copy()
+balance_sheet_columns = {column: normalize_column(column) for column in balance_sheet_df.columns}
+balance_sheet_period_column = find_period_column(balance_sheet_columns)
+balance_sheet_group_company_column = find_group_company_column(balance_sheet_columns)
+if not balance_sheet_period_column:
+    st.error("Could not identify period column in ADS_CONTROLS_BS_2026.")
+    st.dataframe(pd.DataFrame({"Available columns": balance_sheet_df.columns.tolist()}), use_container_width=True)
+    st.stop()
+if not balance_sheet_group_company_column:
+    st.error("Could not identify group company column in ADS_CONTROLS_BS_2026.")
+    st.dataframe(pd.DataFrame({"Available columns": balance_sheet_df.columns.tolist()}), use_container_width=True)
+    st.stop()
+if "BALANCE_AMOUNT_YTD" not in balance_sheet_df.columns:
+    st.error("Could not identify BALANCE_AMOUNT_YTD column in ADS_CONTROLS_BS_2026.")
+    st.dataframe(pd.DataFrame({"Available columns": balance_sheet_df.columns.tolist()}), use_container_width=True)
+    st.stop()
+
+balance_sheet_df[balance_sheet_period_column] = (
+    balance_sheet_df[balance_sheet_period_column].fillna("").astype(str).str.strip()
+)
 
 default_period = period_options[-1]
 
@@ -511,6 +583,27 @@ with st.container(border=True):
                 metric["state"],
             )
 
+balance_sheet_result_df = build_balance_sheet_controls(
+    balance_sheet_df,
+    balance_sheet_period_column,
+    balance_sheet_group_company_column,
+)
+balance_sheet_ok_count = (balance_sheet_result_df["Status"] == "OK").sum()
+
+with st.container(border=True):
+    st.markdown('<div class="section-title">Balance Sheet by Group Company</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-note">Checks CBS2 balance sheet totals by group company from ADS_CONTROLS_BS_2026. BALANCE_AMOUNT_YTD must be zero to pass.</div>',
+        unsafe_allow_html=True,
+    )
+    render_status(balance_sheet_ok_count, 0, len(balance_sheet_result_df), selected_period)
+    st.dataframe(
+        balance_sheet_result_df.style.format({"Balance amount YTD": "{:,.0f}"}),
+        use_container_width=True,
+        hide_index=True,
+        height=280,
+    )
+
 trend_rows = []
 # Build one row per month for trend lines and the status overview table.
 for period in period_options:
@@ -563,12 +656,31 @@ with st.expander("Source data and detected columns"):
         )
     st.dataframe(pd.DataFrame(monthly_ytd_detected), use_container_width=True, hide_index=True)
     st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Period column": balance_sheet_period_column,
+                    "Group company column": balance_sheet_group_company_column,
+                    "Amount column": "BALANCE_AMOUNT_YTD",
+                    "Source table": BALANCE_SHEET_TABLE_ID,
+                }
+            ]
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.dataframe(
         controls_df.sort_values(period_column, key=lambda series: series.map(period_sort_key)),
         use_container_width=True,
         hide_index=True,
     )
     st.dataframe(
         monthly_ytd_df.sort_values(monthly_ytd_period_column, key=lambda series: series.map(period_sort_key)),
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.dataframe(
+        balance_sheet_df.sort_values(balance_sheet_period_column, key=lambda series: series.map(period_sort_key)),
         use_container_width=True,
         hide_index=True,
     )
