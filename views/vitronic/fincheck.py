@@ -18,7 +18,7 @@ OK_TOLERANCE = 1
 POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e63b7f7fbe8a/reports/e51d703b-a94a-4167-a664-0fde0315f0c8/a1be24ae0c7faff0bccb?experience=power-bi"
 
 
-if st.button("Back to Vitronic Hub"):
+if st.button("Back to Vitronic Hub", key="back_to_vitronic_hub", type="secondary"):
     st.switch_page("views/vitronic/hub.py")
 
 
@@ -69,6 +69,7 @@ st.markdown(
         .section-title { color: #132033; font-size: 1.02rem; font-weight: 760; margin: 0.75rem 0 0.4rem 0; }
         .section-note { color: #64748B; font-size: 0.88rem; margin: -0.15rem 0 0.85rem 0; }
         .control-spacer { height: 1.78rem; }
+        div[data-testid="stButton"] > button { color: #132033 !important; background: #FFFFFF !important; border: 1px solid #CBD5E1 !important; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -586,7 +587,7 @@ incomplete_count = sum(metric["state"] == "incomplete" for metric in metric_valu
 with st.container(border=True):
     st.markdown('<div class="section-title">IDL vs Excel Controls</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-note">Compares prepared IDL figures against Excel control values from ADS_CONTROLS_2026.</div>',
+        '<div class="section-note">Compares prepared IDL figures against Excel control values from ADS_CONTROLS_2026. Revenue, EBITDA and Profit are CBS2 figures; Conso Adjustments represent consolidation adjustments.</div>',
         unsafe_allow_html=True,
     )
     render_status(ok_count, incomplete_count, len(metric_values), selected_period)
@@ -681,16 +682,15 @@ for period in period_options:
 trend_df = pd.DataFrame(trend_rows).set_index("Period")
 
 st.divider()
-chart_col, table_col = st.columns([1.35, 1])
-with chart_col:
-    st.markdown('<div class="section-title">Difference Trend</div>', unsafe_allow_html=True)
-    diff_columns = [column for column in trend_df.columns if column.endswith(" Diff")]
-    st.line_chart(trend_df[diff_columns], use_container_width=True)
-
-with table_col:
-    st.markdown('<div class="section-title">2026 Status Overview</div>', unsafe_allow_html=True)
-    status_table = trend_df.reset_index()
-    st.dataframe(status_table, use_container_width=True, hide_index=True, height=330)
+st.markdown('<div class="section-title">2026 Status Overview</div>', unsafe_allow_html=True)
+status_table = trend_df.reset_index()
+diff_format = {column: "{:,.0f}" for column in status_table.columns if column.endswith(" Diff")}
+st.dataframe(
+    status_table.style.format(diff_format),
+    use_container_width=True,
+    hide_index=True,
+    height=360,
+)
 
 
 # =============================================================================
