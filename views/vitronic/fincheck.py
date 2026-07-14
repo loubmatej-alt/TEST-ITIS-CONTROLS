@@ -6,6 +6,9 @@ import streamlit as st
 from keboola_streamlit import KeboolaStreamlit
 
 
+# =============================================================================
+# Configuration
+# =============================================================================
 # Source table prepared in Keboola. It is expected to have one row per 2026 period
 # and ready-made columns for IDL value, Excel value, and CHECK status per metric.
 TABLE_ID = "out.c-036-final-ads-jedox.ADS_CONTROLS_2026"
@@ -18,6 +21,10 @@ POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e6
 if st.button("Back to Vitronic Hub"):
     st.switch_page("views/vitronic/hub.py")
 
+
+# =============================================================================
+# Page Styling
+# =============================================================================
 # Page-local CSS. Keeping this here makes the dashboard self-contained and avoids
 # touching the rest of the Streamlit app styling.
 st.markdown(
@@ -68,6 +75,9 @@ st.markdown(
 )
 
 
+# =============================================================================
+# Generic Helpers
+# =============================================================================
 def get_config_value(*names, default=None):
     # Keboola apps can expose secrets either through st.secrets or env variables.
     for name in names:
@@ -129,6 +139,9 @@ def is_2026_period(value):
     return year == 2026 and 1 <= month <= 12
 
 
+# =============================================================================
+# Column Discovery Helpers
+# =============================================================================
 def find_column(columns, include_terms, exclude_terms=None):
     # Generic helper used by build_metric. It lets us add new metrics by alias
     # instead of hardcoding exact physical column names.
@@ -163,6 +176,9 @@ def find_group_company_column(columns):
     return None
 
 
+# =============================================================================
+# UI Rendering Helpers
+# =============================================================================
 def render_status(ok_count, incomplete_count, total_count, selected_period):
     # Overall status priority: incomplete data first, then real OK/NOT OK.
     if incomplete_count:
@@ -213,6 +229,9 @@ def render_metric_card(title, idl_value, excel_value, diff_value, state):
     render_comparison_card(title, "IDL", idl_value, "Excel", excel_value, diff_value, state)
 
 
+# =============================================================================
+# Metric Definition Builders
+# =============================================================================
 def build_metric(columns, metric_name, aliases):
     # A metric is defined by detectable IDL, Excel, optional DIFF, and CHECK columns.
     # Example accepted names: PROFIT_IDL_AC_YTD, PROFIT_IDL_EXCEL_AC_YTD,
@@ -266,6 +285,9 @@ def build_monthly_ytd_metric(columns, metric_name, aliases):
     }
 
 
+# =============================================================================
+# Metric Value Calculators
+# =============================================================================
 def get_metric_values(period_slice, metric):
     # If either side is zero, the month is treated as not loaded yet instead of
     # failing the control. This avoids false red NOT OK states for open months.
@@ -300,6 +322,9 @@ def get_monthly_ytd_values(period_slice, metric):
     return {"name": metric["name"], "monthly": monthly, "ytd": ytd, "diff": diff, "state": state}
 
 
+# =============================================================================
+# Schema Validation Helpers
+# =============================================================================
 def show_schema_help(df, metrics):
     # Fail with a useful schema diagnostic if the prepared table changes shape.
     missing = []
@@ -361,6 +386,9 @@ def build_balance_sheet_controls(df, period_column, group_company_column):
     return result_df
 
 
+# =============================================================================
+# Keboola Client and Data Loaders
+# =============================================================================
 kbc_url = get_config_value("KBC_URL", default="https://connection.europe-west3.gcp.keboola.com")
 kbc_token = get_config_value("EDITOR_TOKEN", "KBC_TOKEN", "KBC_STORAGE_TOKEN", "STORAGE_TOKEN")
 
@@ -390,6 +418,9 @@ def load_balance_sheet_controls():
     return keboola.read_table(BALANCE_SHEET_TABLE_ID)
 
 
+# =============================================================================
+# Load Source Tables
+# =============================================================================
 # Load and validate the prepared controls table before rendering the dashboard.
 with st.spinner("Loading 2026 control dashboard data from Keboola..."):
     try:
@@ -424,6 +455,10 @@ if balance_sheet_df.empty:
     st.warning(f"Table {BALANCE_SHEET_TABLE_ID} is empty.")
     st.stop()
 
+
+# =============================================================================
+# Prepare IDL vs Excel Controls
+# =============================================================================
 controls_df = controls_df.copy()
 columns = {column: normalize_column(column) for column in controls_df.columns}
 period_column = find_period_column(columns)
@@ -451,6 +486,10 @@ metrics = [
 ]
 show_schema_help(controls_df, metrics)
 
+
+# =============================================================================
+# Prepare Calculated Monthly YTD vs Reported YTD Controls
+# =============================================================================
 monthly_ytd_df = monthly_ytd_df.copy()
 monthly_ytd_columns = {column: normalize_column(column) for column in monthly_ytd_df.columns}
 monthly_ytd_period_column = find_period_column(monthly_ytd_columns)
@@ -467,6 +506,10 @@ monthly_ytd_metrics = [
 ]
 show_monthly_ytd_schema_help(monthly_ytd_df, monthly_ytd_metrics)
 
+
+# =============================================================================
+# Prepare Balance Sheet Controls
+# =============================================================================
 balance_sheet_df = balance_sheet_df.copy()
 balance_sheet_columns = {column: normalize_column(column) for column in balance_sheet_df.columns}
 balance_sheet_period_column = find_period_column(balance_sheet_columns)
@@ -490,6 +533,10 @@ balance_sheet_df[balance_sheet_period_column] = (
 
 default_period = period_options[-1]
 
+
+# =============================================================================
+# Dashboard Header and Global Controls
+# =============================================================================
 st.markdown(
     """
     <div class="fc-hero">
@@ -528,6 +575,10 @@ if period_df.empty:
     st.warning(f"No rows found for period {selected_period}.")
     st.stop()
 
+
+# =============================================================================
+# Section 1: IDL vs Excel Controls
+# =============================================================================
 metric_values = [get_metric_values(period_df, metric) for metric in metrics]
 ok_count = sum(metric["state"] == "ok" for metric in metric_values)
 incomplete_count = sum(metric["state"] == "incomplete" for metric in metric_values)
@@ -551,6 +602,10 @@ if monthly_ytd_period_df.empty:
     st.warning(f"No monthly vs YTD rows found for period {selected_period}.")
     st.stop()
 
+
+# =============================================================================
+# Section 2: Calculated Monthly YTD vs Reported YTD
+# =============================================================================
 monthly_ytd_values = [
     get_monthly_ytd_values(monthly_ytd_period_df, metric) for metric in monthly_ytd_metrics
 ]
@@ -583,6 +638,10 @@ with st.container(border=True):
                 metric["state"],
             )
 
+
+# =============================================================================
+# Section 3: Balance Sheet by Group Company
+# =============================================================================
 balance_sheet_result_df = build_balance_sheet_controls(
     balance_sheet_df,
     balance_sheet_period_column,
@@ -604,6 +663,10 @@ with st.container(border=True):
         height=280,
     )
 
+
+# =============================================================================
+# Trend and Period Overview
+# =============================================================================
 trend_rows = []
 # Build one row per month for trend lines and the status overview table.
 for period in period_options:
@@ -629,6 +692,10 @@ with table_col:
     status_table = trend_df.reset_index()
     st.dataframe(status_table, use_container_width=True, hide_index=True, height=330)
 
+
+# =============================================================================
+# Debug / Diagnostics
+# =============================================================================
 with st.expander("Source data and detected columns"):
     # Developer/debug view: shows how aliases mapped to real Keboola columns.
     detected = []
