@@ -18,7 +18,7 @@ OK_TOLERANCE = 1
 POWER_BI_DETAIL_URL = "https://app.powerbi.com/groups/20d8270f-2eb5-463c-a99b-e63b7f7fbe8a/reports/e51d703b-a94a-4167-a664-0fde0315f0c8/a1be24ae0c7faff0bccb?experience=power-bi"
 
 
-if st.button("Back to Vitronic Hub", key="back_to_vitronic_hub", type="secondary"):
+if st.button("< Back to Vitronic Hub", key="back_to_vitronic_hub", type="secondary"):
     st.switch_page("views/vitronic/hub.py")
 
 
@@ -70,6 +70,7 @@ st.markdown(
         .section-note { color: #64748B; font-size: 0.88rem; margin: -0.15rem 0 0.85rem 0; }
         .control-spacer { height: 1.78rem; }
         div[data-testid="stButton"] > button { color: #132033 !important; background: #FFFFFF !important; border: 1px solid #CBD5E1 !important; }
+        div[data-testid="stButton"] > button p, div[data-testid="stButton"] > button span { color: #132033 !important; font-weight: 650 !important; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -587,7 +588,7 @@ incomplete_count = sum(metric["state"] == "incomplete" for metric in metric_valu
 with st.container(border=True):
     st.markdown('<div class="section-title">IDL vs Excel Controls</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-note">Compares prepared IDL figures against Excel control values from ADS_CONTROLS_2026. Revenue, EBITDA and Profit are CBS2 figures; Conso Adjustments represent consolidation adjustments.</div>',
+        '<div class="section-note">Compares prepared IDL figures against Excel control values from ADS_CONTROLS_2026. <strong>Revenue, EBITDA and Profit are CBS2 figures</strong>; Conso Adjustments represent consolidation adjustments.</div>',
         unsafe_allow_html=True,
     )
     render_status(ok_count, incomplete_count, len(metric_values), selected_period)
