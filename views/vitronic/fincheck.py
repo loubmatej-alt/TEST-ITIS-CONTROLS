@@ -30,7 +30,7 @@ if st.button("< Back to Vitronic Hub", key="back_to_vitronic_hub", type="seconda
 st.markdown(
     """
     <style>
-        .block-container { padding-top: 3.4rem; max-width: 1180px; }
+        .block-container { padding-top: 3.8rem; max-width: 1180px; }
         .fc-hero {
             border: 1px solid #D7E1EC; border-radius: 8px; padding: 1.15rem 1.25rem;
             background: #F8FAFC; margin-bottom: 1rem;
